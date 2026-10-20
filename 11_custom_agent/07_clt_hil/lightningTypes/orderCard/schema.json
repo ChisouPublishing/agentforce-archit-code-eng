@@ -1,0 +1,5 @@
+{
+  "title": "Order Card",
+  "description": "Order Card",
+  "lightning:type": "@apexClassType/c__AFD_OrderCard"
+}

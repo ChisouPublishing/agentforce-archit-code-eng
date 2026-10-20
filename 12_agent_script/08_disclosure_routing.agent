@@ -1,0 +1,11 @@
+run @actions.get_localized_message
+    with labelKey="RefundPolicyNotice"
+    set @variables.notice_text=@outputs.message
+    set @variables.notice_found=@outputs.found
+
+if @variables.notice_found == True:
+    | Give the customer the following text exactly as written, without summarizing or paraphrasing it.
+      {!@variables.notice_text}
+if @variables.notice_found == False:
+    # If the text cannot be retrieved, hand off to a person instead. Never fill the gap with a vague paraphrase
+    transition to @subagent.Escalation

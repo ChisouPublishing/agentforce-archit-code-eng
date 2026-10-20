@@ -1,0 +1,35 @@
+<template>
+    <div class="slds-p-around_x-small">
+        <div class="slds-media slds-media_center slds-m-bottom_x-small">
+            <div class="slds-media__figure">
+                <lightning-icon icon-name="standard:orders" size="small" alternative-text="Orders"></lightning-icon>
+            </div>
+            <div class="slds-media__body">
+                <h2 class="slds-text-heading_small">Orders from the last 90 days ({count})</h2>
+                <p class="slds-text-body_small slds-text-color_weak">Returnable orders: {returnableCount}</p>
+            </div>
+        </div>
+        <ul class="slds-has-dividers_top-space">
+            <template for:each={cards} for:item="o">
+                <li key={o.orderNumber} class="slds-item">
+                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                        <div class="slds-media slds-media_center slds-has-flexi-truncate">
+                            <div class="slds-media__figure">
+                                <lightning-icon icon-name={o.icon} size="x-small" alternative-text=""></lightning-icon>
+                            </div>
+                            <div class="slds-media__body">
+                                <p class="slds-text-title_bold">{o.orderNumber}</p>
+                                <p class="slds-text-body_small slds-text-color_weak">
+                                    <lightning-formatted-date-time value={o.orderDate} year="numeric" month="2-digit" day="2-digit" time-zone="UTC"></lightning-formatted-date-time>
+                                    ·
+                                    <lightning-formatted-number value={o.totalAmount} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                </p>
+                            </div>
+                        </div>
+                        <lightning-badge label={o.note} icon-name={o.badgeIcon} class={o.badgeClass}></lightning-badge>
+                    </div>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>

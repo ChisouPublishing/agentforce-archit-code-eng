@@ -1,0 +1,5 @@
+{
+  "title": "Return Confirmation",
+  "description": "Return Confirmation",
+  "lightning:type": "@apexClassType/c__AFD_ReturnConfirmation"
+}

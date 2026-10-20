@@ -1,0 +1,80 @@
+<template>
+    <div class="slds-p-around_x-small">
+        <div class="slds-media slds-media_center slds-m-bottom_small">
+            <div class="slds-media__figure">
+                <lightning-icon icon-name="standard:return_order" size="small" alternative-text="Return"></lightning-icon>
+            </div>
+            <div class="slds-media__body">
+                <h2 class="slds-text-heading_small">Return Quote</h2>
+            </div>
+            <div class="slds-media__figure slds-media__figure_reverse">
+                <template lwc:if={ok}>
+                    <lightning-badge label="Returnable" icon-name="utility:success" class="slds-theme_success"></lightning-badge>
+                </template>
+                <template lwc:else>
+                    <lightning-badge label="Not eligible" icon-name="utility:error" class="slds-theme_error"></lightning-badge>
+                </template>
+            </div>
+        </div>
+        <c-afd-return-steps current="review"></c-afd-return-steps>
+
+        <template lwc:if={ok}>
+            <div class="slds-box slds-box_x-small slds-theme_shade slds-m-top_small slds-p-around_small">
+                <p class="slds-text-title slds-text-color_weak">Expected Refund</p>
+                <p class="slds-text-heading_large">
+                    <lightning-formatted-number value={refundAmount} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                </p>
+                <p class="slds-text-body_small slds-text-color_weak">{routeLabel}</p>
+            </div>
+        </template>
+
+        <div class="slds-form slds-m-top_small" role="list">
+            <div class="slds-form__row">
+                <div class="slds-form__item" role="listitem">
+                    <div class="slds-form-element slds-form-element_horizontal slds-form-element_readonly">
+                        <span class="slds-form-element__label">Order Number</span>
+                        <div class="slds-form-element__control"><div class="slds-form-element__static">{orderNumber}</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-form__row">
+                <div class="slds-form__item" role="listitem">
+                    <div class="slds-form-element slds-form-element_horizontal slds-form-element_readonly">
+                        <span class="slds-form-element__label">Order Date</span>
+                        <div class="slds-form-element__control"><div class="slds-form-element__static">
+                            <template lwc:if={orderDate}>
+                                <lightning-formatted-date-time value={orderDate} year="numeric" month="long" day="numeric" time-zone="UTC"></lightning-formatted-date-time>
+                            </template>
+                            <template lwc:else>—</template>
+                        </div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-form__row">
+                <div class="slds-form__item" role="listitem">
+                    <div class="slds-form-element slds-form-element_horizontal slds-form-element_readonly">
+                        <span class="slds-form-element__label">Return Reason</span>
+                        <div class="slds-form-element__control"><div class="slds-form-element__static">{reasonLabel}</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-form__row">
+                <div class="slds-form__item" role="listitem">
+                    <div class="slds-form-element slds-form-element_horizontal slds-form-element_readonly">
+                        <span class="slds-form-element__label">Identity Verification</span>
+                        <div class="slds-form-element__control"><div class="slds-form-element__static">{verifiedLabel}</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class={noticeClass} role="status">
+            <div class="slds-media">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name={noticeIcon} size="x-small" alternative-text=""></lightning-icon>
+                </div>
+                <div class="slds-media__body slds-text-body_small">{message}</div>
+            </div>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,36 @@
+# Fragment for explanation. Declare notice_text / notice_found in variables
+# Deploy and use the book's LocalizedMessageProvider
+# In the verification org, compile it with target set to AFD_LocalizedMessageProvider
+subagent Disclosure:
+    description: "Gets the approved notice text"
+    reasoning:
+        instructions: ->
+            run @actions.get_localized_message
+                with labelKey = "RefundPolicyNotice"
+                set @variables.notice_text = @outputs.message
+                set @variables.notice_found = @outputs.found
+            if @variables.notice_found == True:
+                | Give the customer the following text exactly as written, without summarizing or paraphrasing it.
+                  {!@variables.notice_text}
+            else:
+                | The notice text could not be retrieved. Ask a support representative to confirm it.
+
+    actions:
+        get_localized_message:
+            description: "Gets the translated message for the given key"
+            inputs:
+                labelKey: string
+                    is_required: True
+                    complex_data_type_name: "lightning__textType"
+            outputs:
+                message: string
+                    developer_name: "message"
+                    complex_data_type_name: "lightning__textType"
+                    is_used_by_planner: True
+                    is_displayable: True
+                found: boolean
+                    developer_name: "found"
+                    complex_data_type_name: "lightning__booleanType"
+                    is_used_by_planner: True
+                    is_displayable: True
+            target: "apex://LocalizedMessageProvider"

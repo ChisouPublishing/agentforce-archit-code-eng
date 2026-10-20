@@ -1,0 +1,12 @@
+<template>
+    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+        <span class="slds-badge slds-badge_lightest slds-m-right_x-small">Step {number} of 4</span>
+        <span class="slds-text-title_bold slds-truncate">{label}</span>
+    </div>
+    <lightning-progress-indicator current-step={current} type="base" variant="base">
+        <lightning-progress-step label="Request" value="apply"></lightning-progress-step>
+        <lightning-progress-step label="Review" value="review"></lightning-progress-step>
+        <lightning-progress-step label="Confirm" value="confirm"></lightning-progress-step>
+        <lightning-progress-step label="Done" value="done"></lightning-progress-step>
+    </lightning-progress-indicator>
+</template>

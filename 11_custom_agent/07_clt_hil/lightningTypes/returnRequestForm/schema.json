@@ -1,0 +1,5 @@
+{
+  "title": "Return Request Form",
+  "description": "Return Request Form",
+  "lightning:type": "@apexClassType/c__AFD_ReturnRequestForm"
+}

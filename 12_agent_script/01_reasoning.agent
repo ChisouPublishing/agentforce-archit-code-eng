@@ -1,0 +1,10 @@
+reasoning:
+    instructions: ->
+        # Everything below is evaluated deterministically, from top to bottom
+        if @variables.order_id is None or @variables.order_id == "":
+            | Ask the customer for the order number.
+        else:
+            run @actions.lookup_order
+                with order_id=@variables.order_id
+                set @variables.order_summary=@outputs.order_summary
+            | The customer's order is {!@variables.order_summary}. Explain the details to the customer.

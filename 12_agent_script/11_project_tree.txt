@@ -1,0 +1,34 @@
+agentforce-dev/                              # DX project used for verification (API 68.0)
+├── sfdx-project.json                        # "sourceApiVersion": "68.0"
+├── config/project-scratch-def.json
+├── apex/                                    # Scripts for live calls and test data
+├── validation/                              # Verification results (not deployed)
+└── force-app/main/default/
+    │
+    │ ── (1) Agent Script edited by people ──────────────
+    ├── aiAuthoringBundles/
+    │   └── Order_Support_Agent/
+    │       ├── Order_Support_Agent.agent
+    │       └── Order_Support_Agent.bundle-meta.xml
+    │
+    │ ── (2) Runtime metadata retrieved after publish ────
+    ├── aiAgents/                            # One definition per agent
+    │   └── Order_Support_Agent.aiAgentDefinition-meta.xml
+    ├── aiAgentDefinitionVersions/           # One folder per published version
+    │   └── Order_Support_Agent#1/           # Active version at verification
+    │       ├── Order_Support_Agent#1.aiAgentDefinitionVersion-meta.xml
+    │       ├── agentGraph/
+    │       │   └── Order_Support_Agent_v1_graph.json
+    │       └── localActions/
+    │           └── orders/                  # Subagent name
+    │               └── lookup_orders/       # Action name
+    │                   ├── input/schema.json
+    │                   └── output/schema.json
+    │
+    │ ── (3) Action implementations and dependencies ────
+    ├── classes/                             # AFD_*.cls and *.cls-meta.xml
+    ├── objects/                             # Refund__c and custom Account fields
+    ├── labels/                              # Custom labels
+    ├── genAiPromptTemplates/                # Prompt template for summaries
+    ├── permissionsets/                      # Permission sets for admins and the agent
+    └── settings/                            # Agentforce, Einstein, Data 360

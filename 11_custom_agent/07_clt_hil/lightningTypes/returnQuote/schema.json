@@ -1,0 +1,5 @@
+{
+  "title": "Return Quote",
+  "description": "Return Quote",
+  "lightning:type": "@apexClassType/c__AFD_ReturnQuote"
+}

@@ -1,0 +1,23 @@
+subagent Order_Support:
+    description: "Use when the customer reports a delayed delivery, a missing item, or a wrong tracking number. Returns are handled by start_return, so transfer when the customer brings up a return."
+    reasoning:
+        instructions: ->
+            | You are a support representative for ACME. Respond politely and concisely.
+            | Always run FindOrders and base your answer on its results.
+            if @variables.is_premium == True:
+                | This customer is a premium member. You can offer to arrange priority shipping.
+            else:
+                | Do not offer anything reserved for premium members.
+            if @variables.verified == False:
+                | First tell the customer that identity verification is required, and ask for the order number.
+        actions:
+            find_orders: @actions.FindOrders
+                description: "Returns orders from the last 90 days for a customer ID. Returns found=false when there are none."
+            get_status: @actions.GetShipmentStatus
+                description: "Returns the shipping status, expected date, and whether redelivery is possible for an order ID."
+                available when @variables.verified == True
+            go_to_return: @utils.transition to @subagent.Start_Return
+                description: "Call when the customer wants a return or an exchange."
+            escalate_to_human: @utils.escalate
+                description: "Transfers to a service rep when the issue is not resolved in 3 exchanges or the customer makes a strong complaint."
+                available when @variables.in_business_hours

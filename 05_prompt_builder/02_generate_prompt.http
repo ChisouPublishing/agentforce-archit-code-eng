@@ -1,0 +1,19 @@
+POST {{instance_url}}/services/data/v68.0/einstein/prompt-templates/Summarize_Case_For_Handoff/generations
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "isPreview": false,
+  "inputParams": {
+    "valueMap": {
+      "Input:Case": { "value": { "id": "{{case_id}}" } }
+    }
+  },
+  "additionalConfig": {
+    "numGenerations": 1,
+    "temperature": 0,
+    "frequencyPenalty": 0.0,
+    "presencePenalty": 0.0,
+    "applicationName": "PromptBuilderPreview"
+  }
+}

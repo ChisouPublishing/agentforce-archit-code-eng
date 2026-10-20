@@ -1,0 +1,41 @@
+<template>
+    <div class="slds-p-around_x-small">
+        <div class="slds-media slds-media_center slds-m-bottom_small">
+            <div class="slds-media__figure">
+                <lightning-icon icon-name="standard:return_order" size="small" alternative-text="Return"></lightning-icon>
+            </div>
+            <div class="slds-media__body">
+                <h2 class="slds-text-heading_small">Return Request</h2>
+                <p class="slds-text-body_small slds-text-color_weak"><abbr class="slds-required" title="required">*</abbr> = required field</p>
+            </div>
+        </div>
+        <c-afd-return-steps current="apply"></c-afd-return-steps>
+
+        <div class="slds-form slds-m-top_small" role="list">
+            <lightning-input class="slds-form-element_stacked" label="Order Number" name="orderNumber" value={orderNumber} required
+                pattern="[0-9]{8}" max-length="8" placeholder="e.g., 00000110"
+                message-when-pattern-mismatch="Enter an 8-digit number"
+                message-when-value-missing="Enter your order number"
+                field-level-help="The 8-digit number in your order confirmation email"
+                onchange={handleChange} read-only={readOnly}></lightning-input>
+            <lightning-input class="slds-form-element_stacked" label="Last 4 characters of your email" name="emailTail4" value={emailTail4} required
+                min-length="4" max-length="4" placeholder="e.g., 1234"
+                message-when-too-short="Enter 4 characters"
+                message-when-value-missing="Enter the last 4 characters"
+                field-level-help="The last 4 characters before the @ in your registered email address"
+                onchange={handleChange} read-only={readOnly}></lightning-input>
+            <lightning-radio-group class="slds-form-element_stacked" label="Return Reason" name="reasonCode" options={reasons}
+                value={reasonCode} required type="radio" onchange={handleChange} disabled={readOnly}></lightning-radio-group>
+            <lightning-input class="slds-form-element_stacked" type="toggle" label="Item Condition" name="unopened" checked={unopened}
+                message-toggle-active="Unopened" message-toggle-inactive="Opened"
+                onchange={handleChange} disabled={readOnly}></lightning-input>
+        </div>
+
+        <div class="slds-scoped-notification slds-scoped-notification_light slds-m-top_x-small" role="status">
+            <div class="slds-media">
+                <div class="slds-media__figure"><lightning-icon icon-name="utility:info" size="x-small" alternative-text="Info"></lightning-icon></div>
+                <div class="slds-media__body slds-text-body_small">Submit to see your return eligibility and expected refund. Nothing is processed yet.</div>
+            </div>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,228 @@
+config:
+    developer_name: "Return_Refund_Agent"
+    agent_label: "Returns & Refunds Support"
+    description: "Customer-facing agent that handles order returns and refunds"
+
+access:
+    # The agent can do no more than this user's permissions allow.
+    # Design it here: for example, grant "Create" on the refund object but not "Delete".
+    default_agent_user: "agent.user.d99c56b1719e@example.com"
+
+language:
+    default_locale: "en_US"
+
+system:
+    instructions: |
+        You are the returns and refunds support representative for ACME.
+        Respond to customers in English.
+        Be polite and keep each reply to 3 sentences or fewer.
+        Never guess at anything that is not in the information provided.
+    messages:
+        welcome: "Welcome to ACME Support. I can help you with returns and refunds."
+        error:   "Sorry, something went wrong while processing your request. I'll connect you with a support representative."
+
+variables:
+    verified: mutable boolean = False
+        description: "Whether identity verification is complete. Set to True only when the verification action succeeds."
+    customer_tier: mutable string = "standard"
+        description: "Membership tier: standard or premium."
+    order_number: mutable string = ""
+        description: "The order number the customer provided."
+    email_tail4: mutable string = ""
+        description: "The last 4 characters before the @ of the registered email address. Cleared after the check."
+    order_id: mutable string = ""
+        description: "The ID of the order identified during identity verification."
+    failed_attempts: mutable number = 0
+        description: "Number of failed identity verification attempts. At 3, transfer to a service rep."
+    eligibility_checked: mutable boolean = False
+        description: "Whether the return eligibility check has run."
+    eligible: mutable boolean = False
+        description: "Whether the order meets the return conditions (within 30 days, unopened)."
+    eligibility_reason: mutable string = ""
+        description: "The reason for the decision. Passed to the customer as is."
+    refund_amount: mutable number = 0
+        description: "Expected refund amount (USD)."
+
+# ---------------------------------------------------------------
+# Every turn starts at start_agent. Routing is decided by variables, not by the LLM
+start_agent router:
+    description: "Greets the user and routes to a subagent based on the conversation state."
+    before_reasoning:
+        # After 3 failed identity checks, every turn goes to the handoff subagent
+        if @variables.failed_attempts >= 3:
+            transition to @subagent.Escalation_Handoff
+        if @variables.failed_attempts < 3 and @variables.verified == False:
+            transition to @subagent.Identity_Verification
+        if @variables.failed_attempts < 3 and @variables.verified == True:
+            transition to @subagent.Return_Eligibility
+    reasoning:
+        instructions: ->
+            | Ask how you can help.
+
+# ---------------------------------------------------------------
+subagent Identity_Verification:
+    description: "Verifies identity with the order number and the last 4 characters of the registered email address."
+    actions:
+        VerifyCustomer:
+            description: "Checks the order number and the last 4 characters of the email address."
+            inputs:
+                orderNumber: string
+                    is_required: True
+                emailTail4: string
+                    is_required: True
+                previousAttempts: object
+                    complex_data_type_name: "lightning__integerType"
+            outputs:
+                verified: boolean
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                customerTier: string
+                attemptsUsed: object
+                    complex_data_type_name: "lightning__integerType"
+                message: string
+            target: "apex://VerifyCustomerAction"
+    reasoning:
+        instructions: ->
+            | Before helping with a return or refund, tell the customer that identity verification is required.
+            | Ask for the order number and the last 4 characters before the @ of the registered email address.
+            | When the customer provides them, extract them with set_inputs, and run verify once both are available.
+            | If the check fails, tell the customer only the content of the verify message, and do not say whether the order number or the email was wrong.
+            | Never say that identity verification is complete before the verify result says so.
+        actions:
+            set_inputs: @utils.setVariables
+                description: "Extracts the order number and the last 4 characters of the email address the customer provided."
+                with order_number=...
+                with email_tail4=...
+            verify: @actions.VerifyCustomer
+                description: "Checks the order number and the last 4 characters of the email address."
+                # Callable only when both are available and there have been fewer than 3 failures
+                available when @variables.order_number != "" and @variables.email_tail4 != "" and @variables.failed_attempts < 3
+                # Inputs come from variables; the LLM does not fill them in
+                with orderNumber=@variables.order_number
+                with emailTail4=@variables.email_tail4
+                with previousAttempts=@variables.failed_attempts
+                # Store the outputs in variables. All later branching depends on these variables
+                set @variables.verified = @outputs.verified
+                set @variables.order_id = @outputs.orderId
+                set @variables.customer_tier = @outputs.customerTier
+                set @variables.failed_attempts = @outputs.attemptsUsed
+                # Clear the value once used. This prevents repeated checks with the same value and avoids keeping fragments of personal data
+                set @variables.email_tail4 = ""
+    after_reasoning:
+        if @variables.verified == True:
+            transition to @subagent.Return_Eligibility
+        # The third failure moves the conversation to the handoff subagent in the same turn
+        if @variables.failed_attempts >= 3:
+            transition to @subagent.Escalation_Handoff
+
+# ---------------------------------------------------------------
+# Only one tool is available here, so the LLM can't answer instead of transferring
+subagent Escalation_Handoff:
+    description: "Transfers the customer to a human service rep after 3 failed identity verification attempts."
+    reasoning:
+        instructions: ->
+            | Identity verification failed 3 times. Call escalate_to_human now.
+            | Don't ask for the order number or the email address again.
+        actions:
+            escalate_to_human: @utils.escalate
+                description: "Transfers the conversation to a human service rep."
+
+# ---------------------------------------------------------------
+subagent Return_Eligibility:
+    description: "Checks return eligibility and, depending on the result, moves to a refund or an approval request."
+    actions:
+        CheckReturnEligibility:
+            description: "Decides return eligibility from the purchase date and opened status, and returns the expected refund amount."
+            inputs:
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                    is_required: True
+            outputs:
+                eligible: boolean
+                refundAmount: number
+                reason: string
+            target: "apex://CheckReturnEligibilityAction"
+    # The decision is not left to the LLM; it always runs exactly once after identity verification
+    before_reasoning:
+        if @variables.eligibility_checked == False:
+            run @actions.CheckReturnEligibility
+                with orderId=@variables.order_id
+                set @variables.eligible = @outputs.eligible
+                set @variables.refund_amount = @outputs.refundAmount
+                set @variables.eligibility_reason = @outputs.reason
+            set @variables.eligibility_checked = True
+        if @variables.eligible == True and @variables.refund_amount <= 100:
+            transition to @subagent.Auto_Refund
+        if @variables.eligible == True and @variables.refund_amount > 100:
+            transition to @subagent.Request_Approval
+    reasoning:
+        instructions: ->
+            | Tell the customer that the return cannot be accepted, using the wording of this decision without paraphrasing it: {!@variables.eligibility_reason}
+            | Do not say anything that is not in the decision, such as that the process is complete or that a refund was issued.
+            | As an alternative, only refer the customer to the warranty desk.
+
+# ---------------------------------------------------------------
+subagent Auto_Refund:
+    description: "Accepts refund requests of $100 or less."
+    actions:
+        ExecuteRefund:
+            description: "Accepts a refund request. Acceptance does not mean the payment is complete."
+            inputs:
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                    is_required: True
+                amount: number
+                    is_required: True
+            outputs:
+                succeeded: boolean
+                alreadyProcessed: boolean
+                retryable: boolean
+                message: string
+            target: "apex://ExecuteRefundAction"
+    reasoning:
+        instructions: ->
+            | The return is eligible. The refund amount is ${!@variables.refund_amount}. Ask the customer whether to proceed with a refund for this amount.
+            | When the customer agrees, run refund and tell the customer only the content of the refund message. Do not guess when the payment will complete or when the money will arrive.
+            | Use the amount from the decision as is; do not calculate it yourself.
+            if @variables.customer_tier == "premium":
+                | Tell the customer that return shipping is free.
+            else:
+                | Do not say anything about who pays for return shipping.
+        actions:
+            refund: @actions.ExecuteRefund
+                description: "Accepts a refund request after the customer agrees. Acceptance does not mean the payment is complete."
+                available when @variables.eligible == True and @variables.refund_amount <= 100
+                # Order and amount come from variables. The LLM never writes the amount (the idempotency key is built from the order in Apex)
+                with orderId=@variables.order_id
+                with amount=@variables.refund_amount
+
+# ---------------------------------------------------------------
+subagent Request_Approval:
+    description: "Creates an approval request for refunds over $100."
+    actions:
+        CreateApprovalRequest:
+            description: "Creates an approval request record and returns the request number. Does not execute the refund."
+            inputs:
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                    is_required: True
+                amount: number
+                    is_required: True
+            outputs:
+                created: boolean
+                requestNumber: string
+                message: string
+            target: "apex://CreateApprovalRequestAction"
+    reasoning:
+        instructions: ->
+            | The refund amount is ${!@variables.refund_amount}, which exceeds the automatic processing limit ($100), so an approval request is required. Ask the customer whether to submit the request.
+            | When the customer agrees, run create, and give the customer the request number and tell them that approval takes 1 to 2 business days.
+            | Do not use any wording that suggests the refund was completed in this conversation.
+            if @variables.customer_tier == "premium":
+                | Tell the customer that return shipping is free.
+        actions:
+            create: @actions.CreateApprovalRequest
+                description: "Creates an approval request after the customer agrees and returns the request number. Does not execute the refund."
+                available when @variables.eligible == True and @variables.refund_amount > 100
+                with orderId=@variables.order_id
+                with amount=@variables.refund_amount

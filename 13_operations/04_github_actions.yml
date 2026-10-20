@@ -1,0 +1,39 @@
+# .github/workflows/agent-ci.yml: run pull requests to main through the staging org
+name: agent-ci
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Salesforce CLI
+        run: npm install --global @salesforce/cli
+      - name: Connect to the staging org with JWT (keep the app's private key and username in Secrets)
+        run: |
+          echo "${{ secrets.SF_JWT_KEY }}" > server.key
+          sf org login jwt --username "${{ secrets.SF_USERNAME }}" --client-id "${{ secrets.SF_CLIENT_ID }}" \
+            --jwt-key-file server.key --instance-url "${{ secrets.SF_INSTANCE_URL }}" --alias staging
+          rm server.key
+      - name: Pipeline (validate -> validation deploy -> quick deploy -> publish and activate -> evaluate)
+        env:
+          ORG: staging
+          AGENT: Return_Refund_Agent
+          METADATA: >-
+            ApexClass:VerifyCustomerAction ApexClass:CheckReturnEligibilityAction
+            ApexClass:ExecuteRefundAction ApexClass:CreateApprovalRequestAction
+            ApexClass:RefundQueueable ApexClass:ReturnRefundActionsTest
+            CustomObject:Refund__c CustomField:Order.Is_Opened__c PermissionSet:ReturnRefundAgent
+          TESTS: ReturnRefundActionsTest
+          EVAL: Return_Refund_Agent_Eval
+        run: ./scripts/agent_pipeline.sh
+      - name: Keep the evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-test-run
+          path: test-run.json

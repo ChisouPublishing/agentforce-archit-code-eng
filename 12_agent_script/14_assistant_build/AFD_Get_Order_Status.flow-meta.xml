@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>68.0</apiVersion>
+    <description>Returns the status, order date, and amount for an order number (for an agent action; read only)</description>
+    <environments>Default</environments>
+    <interviewLabel>AFD Get Order Status {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>AFD Get Order Status</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value><stringValue>LightningFlowBuilder</stringValue></value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value><stringValue>AUTO_LAYOUT_CANVAS</stringValue></value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <decisions>
+        <name>Order_Found</name>
+        <label>Found?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnector><targetReference>Set_Not_Found</targetReference></defaultConnector>
+        <defaultConnectorLabel>Not Found</defaultConnectorLabel>
+        <rules>
+            <name>Yes</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Get_Order</leftValueReference>
+                <operator>IsNull</operator>
+                <rightValue><booleanValue>false</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>Set_Found</targetReference></connector>
+            <label>Found</label>
+        </rules>
+    </decisions>
+    <assignments>
+        <name>Set_Found</name>
+        <label>Set Results</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>found</assignToReference>
+            <operator>Assign</operator>
+            <value><booleanValue>true</booleanValue></value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>orderStatus</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Get_Order.Status</elementReference></value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>orderDate</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Get_Order.EffectiveDate</elementReference></value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>totalAmount</assignToReference>
+            <operator>Assign</operator>
+            <value><elementReference>Get_Order.TotalAmount</elementReference></value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Set_Not_Found</name>
+        <label>Not Found</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>found</assignToReference>
+            <operator>Assign</operator>
+            <value><booleanValue>false</booleanValue></value>
+        </assignmentItems>
+    </assignments>
+    <recordLookups>
+        <name>Get_Order</name>
+        <label>Get Order</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
+        <connector><targetReference>Order_Found</targetReference></connector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>OrderNumber</field>
+            <operator>EqualTo</operator>
+            <value><elementReference>orderNumber</elementReference></value>
+        </filters>
+        <getFirstRecordOnly>true</getFirstRecordOnly>
+        <object>Order</object>
+        <queriedFields>Id</queriedFields>
+        <queriedFields>Status</queriedFields>
+        <queriedFields>EffectiveDate</queriedFields>
+        <queriedFields>TotalAmount</queriedFields>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </recordLookups>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector><targetReference>Get_Order</targetReference></connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <name>orderNumber</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <description>Order number the customer provided (8 digits)</description>
+    </variables>
+    <variables>
+        <name>found</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+        <description>Whether the order was found</description>
+    </variables>
+    <variables>
+        <name>orderStatus</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+        <description>Order status</description>
+    </variables>
+    <variables>
+        <name>orderDate</name>
+        <dataType>Date</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+        <description>Order date</description>
+    </variables>
+    <variables>
+        <name>totalAmount</name>
+        <dataType>Currency</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+        <scale>0</scale>
+        <description>Order amount (USD)</description>
+    </variables>
+</Flow>

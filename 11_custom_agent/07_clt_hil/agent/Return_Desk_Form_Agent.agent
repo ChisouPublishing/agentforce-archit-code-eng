@@ -1,0 +1,168 @@
+config:
+    developer_name: "Return_Desk_Form_Agent"
+    agent_label: "Return Desk Assistant (Form)"
+    description: "Internal agent that helps support reps take a customer's return request, review the quote, and confirm it with Custom Lightning Type forms and cards"
+    # The lightningDesktopGenAi renderer of a custom Lightning type is drawn by an employee agent in Lightning Experience
+    agent_type: "AgentforceEmployeeAgent"
+
+language:
+    default_locale: "en_US"
+
+system:
+    instructions: |
+        You are the return desk assistant who helps ACME support reps.
+        Respond in English.
+        Be polite and keep each reply to 3 sentences or fewer.
+        Never guess anything that is not in the information provided.
+        Always collect the order number, the email tail, the return reason, and similar details through the form, never from the conversation text.
+    messages:
+        welcome: "Hi, I'm the Return Desk Assistant. I take customer return requests through a form."
+        error:   "Sorry, something went wrong while processing your request. Please try again."
+
+variables:
+    quote_ready: mutable boolean = False
+        description: "Whether the quote was built and the return can be accepted."
+    verified: mutable boolean = False
+        description: "Whether identity verification is complete. Set when the quote is built."
+    order_id: mutable string = ""
+        description: "ID of the order identified during identity verification."
+    order_number: mutable string = ""
+        description: "Order number in the quote."
+    refund_amount: mutable number = 0
+        description: "Expected refund amount (USD). The value decided by Apex."
+    quote_message: mutable string = ""
+        description: "Quote text. Tell it to the customer as is."
+    submitted: mutable boolean = False
+        description: "Whether the confirmation was accepted."
+
+# ---------------------------------------------------------------
+start_agent router:
+    description: "Greets the user and routes to a subagent based on the conversation state."
+    before_reasoning:
+        if @variables.quote_ready == True and @variables.submitted == False:
+            transition to @subagent.Confirm_Return
+        else:
+            transition to @subagent.Return_Form
+    reasoning:
+        instructions: ->
+            | Ask how you can help.
+
+# ---------------------------------------------------------------
+subagent Return_Form:
+    description: "Shows the return request form and presents the quote (identity verification, return eligibility, expected refund) as a card."
+    actions:
+        PrepareReturnQuote:
+            description: "Runs identity verification and the return eligibility check with the return request form, and returns the quote. Does not process a refund."
+            inputs:
+                request: object
+                    label: "Return Request"
+                    is_required: True
+                    is_user_input: True
+                    complex_data_type_name: "c__returnRequestForm"
+                    description: "Order number, last 4 characters of the email, return reason, and unopened declaration. The customer enters them in the form."
+            outputs:
+                quote: object
+                    label: "Return Quote"
+                    complex_data_type_name: "c__returnQuote"
+                    is_displayable: True
+                    # The card content is only shown on screen. The LLM gets only short values such as message below
+                    filter_from_agent: True
+                    description: "Quote shown on the screen card"
+                verified: boolean
+                eligible: boolean
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                orderNumber: string
+                refundAmount: number
+                needsApproval: boolean
+                message: string
+                citations: object
+                    label: "Citations"
+                    complex_data_type_name: "@apexClassType/AiCopilot__GenAiCitationOutput"
+                    description: "Citation for the response (the order record used for the decision)"
+            target: "apex://AFD_PrepareReturnQuoteAction"
+        ListReturnableOrders:
+            description: "Shows the verified customer's orders from the last 90 days as cards marked with whether each can be returned."
+            inputs:
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                    is_required: True
+            outputs:
+                orders: list[object]
+                    label: "Orders from the Last 90 Days"
+                    complex_data_type_name: "c__orderCard"
+                    is_displayable: True
+                    filter_from_agent: True
+                    description: "Order cards shown on screen"
+                summary: string
+            target: "apex://AFD_ListReturnableOrdersAction"
+    reasoning:
+        instructions: ->
+            | For a return or refund request, call the input form tool __user_input__ with action_name "prepare" and fields ["request"] to show the request form.
+            | Do not fill in the request (order number, last 4 characters of the email, return reason, unopened) by guessing from the conversation, and do not ask for the fields one by one in chat.
+            | When the form is submitted and you receive the request, do not show the form again. Run {!@actions.prepare} with its contents as is.
+            | After you run {!@actions.prepare}, always show the quote card with the result display tool __show_tool_results__, whether or not the return is eligible.
+            | When the quote is shown, tell the customer only the message, without rewording it. Do not calculate the amount yourself.
+            if @variables.quote_ready == True:
+                | Ask the customer to review the card and then say "proceed to confirm."
+            else:
+                | If the return cannot be accepted, explain that it cannot proceed to confirmation.
+            if @variables.verified == True:
+                | If the customer wants to see other orders, run {!@actions.list_orders}, show the order cards (orders) with __show_tool_results__, and ask the customer to check on the cards whether each order can be returned. The list has no way to select an order, so do not ask the customer to pick one.
+        actions:
+            prepare: @actions.PrepareReturnQuote
+                description: "Shows the return request form and builds the quote from the submitted contents."
+                with request=...
+                set @variables.verified = @outputs.verified
+                set @variables.quote_ready = @outputs.eligible
+                set @variables.order_id = @outputs.orderId
+                set @variables.order_number = @outputs.orderNumber
+                set @variables.refund_amount = @outputs.refundAmount
+                set @variables.quote_message = @outputs.message
+            list_orders: @actions.ListReturnableOrders
+                description: "Shows orders from the last 90 days as cards marked with whether each can be returned."
+                available when @variables.verified == True
+                with orderId=@variables.order_id
+
+# ---------------------------------------------------------------
+subagent Confirm_Return:
+    description: "Has the customer who reviewed the quote confirm it with the confirm button (checkbox and submit), then processes it."
+    actions:
+        SubmitReturnRequest:
+            description: "Processes the return the customer confirmed with the confirm button. Does nothing if not confirmed."
+            inputs:
+                orderId: object
+                    complex_data_type_name: "lightning__recordIdType"
+                    is_required: True
+                amount: number
+                    is_required: True
+                confirmation: object
+                    label: "Return Confirmation"
+                    is_required: True
+                    is_user_input: True
+                    complex_data_type_name: "c__returnConfirmation"
+                    description: "What the customer confirmed with the confirm button."
+            outputs:
+                submitted: boolean
+                message: string
+                citations: object
+                    label: "Citations"
+                    complex_data_type_name: "@apexClassType/AiCopilot__GenAiCitationOutput"
+                    description: "Citation for the response (the refund request that was created)"
+            target: "apex://AFD_SubmitReturnRequestAction"
+    reasoning:
+        instructions: ->
+            | Quote: {!@variables.quote_message}
+            | Call the input form tool __user_input__ with action_name "submit" and fields ["confirmation"] to show the confirmation form. Do not ask "Is that OK?" in chat, and do not proceed based on a chat reply.
+            | Leave confirmed to the form checkbox. Never set it to true yourself.
+            | When the form is submitted and you receive the confirmation, do not show the form again. Run {!@actions.submit} with its contents as is. Let submit decide whether the box was checked.
+            | After processing, tell the customer only the submit message. Do not guess whether the payment is complete or when the money will arrive.
+        actions:
+            submit: @actions.SubmitReturnRequest
+                description: "Shows the confirmation form and processes the return after the customer checks the box and submits."
+                available when @variables.quote_ready == True and @variables.submitted == False
+                # Pass the order and amount from variables. Never let the LLM write them
+                with orderId=@variables.order_id
+                with amount=@variables.refund_amount
+                with confirmation=...
+                set @variables.submitted = @outputs.submitted

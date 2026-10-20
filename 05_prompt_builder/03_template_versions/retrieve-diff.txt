@@ -1,0 +1,61 @@
+diff --git a/backups/prompt_v2_20261006/Summarize_Case_For_Handoff.genAiPromptTemplate-meta.xml b/force-app/main/default/genAiPromptTemplates/Summarize_Case_For_Handoff.genAiPromptTemplate-meta.xml
+index 79503d7..345a389 100644
+--- a/backups/prompt_v2_20261006/Summarize_Case_For_Handoff.genAiPromptTemplate-meta.xml
++++ b/force-app/main/default/genAiPromptTemplates/Summarize_Case_For_Handoff.genAiPromptTemplate-meta.xml
+@@ -2,8 +2,16 @@
+ <GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+-    <activeVersionIdentifier>zppNfjFKiYXcE45MWLtsCbNcCjtqAEm5u2n7TViI3ds=_1</activeVersionIdentifier>
++    <activeVersionIdentifier>prkHKq/S2mRt+Anw+YBiLAzh9J+whyElXm/IaVQr1lQ=_2</activeVersionIdentifier>
+     <developerName>Summarize_Case_For_Handoff</developerName>
+     <masterLabel>Summarize Case For Handoff</masterLabel>
++    <overridable>false</overridable>
+     <templateVersions>
+         <content>Summarize the following case concisely in English for handoff to another representative. Use only the facts given, and mark anything unclear as unknown. Subject: {!$Input:Case.Subject} Description: {!$Input:Case.Description}</content>
+-        <inputs><apiName>Case</apiName><definition>SOBJECT://Case</definition><masterLabel>Case</masterLabel><referenceName>Input:Case</referenceName><required>true</required></inputs>
++        <inputs>
++            <apiName>Case</apiName>
++            <definition>SOBJECT://Case</definition>
++            <masterLabel>Case</masterLabel>
++            <referenceName>Input:Case</referenceName>
++            <required>true</required>
++        </inputs>
++        <isCitationEnabled>false</isCitationEnabled>
+         <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+@@ -12,2 +20,37 @@
+     </templateVersions>
++    <templateVersions>
++        <content># Role
++You are a representative at the ACME support desk. You write a summary to hand off a case to another representative.
++
++# Context
++Subject: {!$Input:Case.Subject}
++Description: {!$Input:Case.Description}
++
++# Task
++From the subject and description above, summarize only what is needed for the handoff.
++
++# Constraints
++- Do not write anything that is not in the subject or description. Write "Unknown" for anything you cannot tell.
++- Write in English, and keep the whole summary within 60 words.
++
++# Output format
++Output only the following 3 lines.
++Symptom: …
++Impact: …
++Next step: …
++</content>
++        <fileDroppingStrategy>{&quot;dropFilesBy&quot;:&quot;LAST_MODIFIED_DATE&quot;,&quot;dropFileStartingWith&quot;:&quot;OLDEST&quot;}</fileDroppingStrategy>
++        <inputs>
++            <apiName>Case</apiName>
++            <definition>SOBJECT://Case</definition>
++            <masterLabel>Case</masterLabel>
++            <referenceName>Input:Case</referenceName>
++            <required>true</required>
++        </inputs>
++        <isCitationEnabled>false</isCitationEnabled>
++        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
++        <status>Published</status>
++        <templateFormat>FormulaExpression</templateFormat>
++        <versionIdentifier>prkHKq/S2mRt+Anw+YBiLAzh9J+whyElXm/IaVQr1lQ=_2</versionIdentifier>
++    </templateVersions>
+     <type>einstein_gpt__flex</type>

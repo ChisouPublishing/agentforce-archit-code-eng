@@ -1,0 +1,69 @@
+system:
+    instructions: "You are a polite assistant who gives customers information about their orders."
+    messages:
+        welcome: "Hi, I'm the customer support assistant."
+        error: "Sorry, I couldn't process that. Please try rephrasing your request."
+
+config:
+    developer_name: "customer_support_assistant"
+    description: "Handles order inquiries according to the support policy"
+
+access:
+    default_agent_user: "agent.user.d99c56b1719e@example.com"
+
+variables:
+    member_email: mutable string = ""
+    verified: mutable boolean = False
+    order_summary: mutable string = ""
+
+# Entry point of the conversation. For re-entry on every turn, also check the runtime settings
+start_agent agent_router:
+    description: "Greets the user and routes to the right subagent"
+    reasoning:
+        instructions: ->
+            | You are the customer support router. Read the user's request
+              and route it to the right subagent.
+              Do not escalate to a service rep unless explicitly asked.
+        actions:
+            # Restrict transitions by identity verification state. The actions also authorize
+            go_to_identity: @utils.transition to @subagent.Identity
+                description: "Performs identity verification"
+                available when @variables.verified == False
+            go_to_order: @utils.transition to @subagent.Order_Management
+                description: "Looks up, updates, and checks the status of orders"
+                available when @variables.verified == True
+
+subagent Order_Management:
+    description: "Handles order lookups, updates, and status summaries"
+    reasoning:
+        instructions: ->
+            if @variables.order_summary == "":
+                run @actions.lookup_current_order
+                    with member_email=@variables.member_email
+                    set @variables.order_summary=@outputs.order_summary
+            | The current order is {!@variables.order_summary}.
+              If the customer asks about a past order, ask for the order number
+              and look it up with {!@actions.lookup_order}.
+        actions:
+            lookup_order: @actions.lookup_order
+                # ... means "the LLM reads it from the conversation and fills it in"
+                with query = ...
+                set @variables.order_summary=@outputs.order_summary
+
+    # Action definitions valid only inside this subagent
+    actions:
+        lookup_order:
+            description: "Gets the details of an order"
+            inputs:
+                query: string
+            outputs:
+                order_summary: string
+            target: "flow://Get_Past_Order"
+
+        lookup_current_order:
+            description: "Gets the details of the current order"
+            inputs:
+                member_email: string
+            outputs:
+                order_summary: string
+            target: "flow://Get_Current_Order"

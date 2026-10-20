@@ -1,0 +1,6 @@
+system:
+    instructions: |
+        Always respond in the same language the user writes in.
+        If the user writes in Spanish, give every response in Spanish,
+        including guidance, confirmations, and apologies.
+        If the user switches languages, keep responding in the new language.

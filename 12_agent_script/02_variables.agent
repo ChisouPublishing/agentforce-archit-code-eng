@@ -1,0 +1,10 @@
+variables:
+    member_email: mutable string = ""
+        description: "Member email address"
+    verified: mutable boolean = False
+        description: "Whether identity verification is complete"
+    order_total: mutable number = 0
+
+    # Linked variable: session ID of the Messaging connection. Do not rely on a value when there is no connection
+    session_id: linked string
+        source: @MessagingSession.Id

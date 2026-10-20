@@ -1,0 +1,8 @@
+connected_subagent CRM_Agent:
+    label: "CRM_Agent"
+    target: "agentforce://X00Dfi200000dpFZ_CRM_Agent"
+    loading_text: "Checking customer information…"
+    description: "Handles inquiries about accounts, opportunities, and activity history. It does not handle order or shipping inquiries, so do not send those to this agent."
+    inputs:
+        account_id: string = @variables.account_id
+        verified:   boolean = @variables.verified
